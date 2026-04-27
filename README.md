@@ -1,297 +1,409 @@
-1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
+# ClearKYC
 
-1
+**Autonomous KYC using AI Agents & Consent-Based Data Vaults**
 
-ClearKYC
+> Verify once. Reuse everywhere. With consent. With reward.
 
-Autonomous KYC using AI Agents &
+**Live Demo:** [https://clearkyc.vercel.app](https://clearkyc.vercel.app)
 
-Consent-Based Data Vaults
+---
 
-Team Members
+## Team
 
-LYCC114 – MITU22BTCS0793 – Shreyash Yashwant Parve
+| Roll Number | Name |
+|---|---|
+| MITU22BTCS0793 | Shreyash Yashwant Parve |
+| MITU22BTCS0713 | Sanchit Santos Aher |
+| MITU22BTCS0234 | Chirag Sharma |
+| MITU22BTCS0536 | Piyush Malik |
 
-MITU22BTCS0713 – Sanchit Santos Aher
+**Guide:** Prof. Rupesh Hushangabad
 
-MITU22BTCS0234 – Chirag Sharma
+**Project Code:** LYCC114
 
-MITU22BTCS0536 – Piyush Malik
+---
 
-Guide: Prof. Rupesh Hushangabad
+## Problem Statement
 
-127.0.0.1:5500/ClearKYC
+Current KYC systems are broken:
 
-Presentation.html 1/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
+- Users upload the **same documents repeatedly** to every bank
+- Banks rely on **manual or semi-manual verification** costing ₹50–150 per customer
+- Onboarding takes **days instead of seconds**
+- Sensitive documents are **copied and stored everywhere**, creating privacy risks
+- A bank performing 10 lakh KYCs/year spends **₹5–15 crore annually**
 
-2
+**Core Problem:** KYC is expensive, repetitive, slow, and unsafe.
 
-Problem Statement
+---
 
-Current KYC System
+## Solution
 
-What's wrong today?
+ClearKYC replaces document-based KYC with a **consent-based, AI-agent-driven verification system**.
 
-• Users upload same KYC documents repeatedly
+```
+User uploads KYC once → AI verifies & stores in encrypted vault
+                        → Bank requests access via agents
+                        → User gives consent
+                        → Bank gets verified data (not raw documents)
+                        → User earns ₹1
+```
 
-• Banks rely on manual or semi-manual verification
+**Key Idea:** The user owns their data. Banks pay ₹1 per KYC instead of ₹100+. Nobody sees raw documents.
 
-• Onboarding takes days
+---
 
-• Sensitive documents are copied & stored everywhere
+## Architecture
 
-• High cost per KYC for banks
+```mermaid
+graph TD
+    subgraph userSide ["User (Browser)"]
+        UI["Frontend SPA"]
+        Tesseract["Tesseract.js OCR"]
+        AgentEngine["Agent Engine"]
+    end
 
-Core Problem:
+    subgraph agents ["Agent System"]
+        VaultAgent["VaultAgent (ADK)"]
+        BankAgent["BankAgent (ADK)"]
+        MCPTools["MCP Tool Registry"]
+    end
 
-KYC is expensive, repetitive, slow, and unsafe.
+    subgraph firebase ["Firebase (Spark - Free)"]
+        Auth["Firebase Auth"]
+        Firestore["Cloud Firestore"]
+    end
 
-127.0.0.1:5500/ClearKYC
+    subgraph vercel ["Vercel (Free)"]
+        Hosting["Static Hosting"]
+        CreateOrder["/api/create-order"]
+        VerifyPay["/api/verify-payment"]
+    end
 
-Presentation.html 2/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
+    subgraph razorpay ["Razorpay (Test Mode)"]
+        Checkout["Checkout.js"]
+        OrderAPI["Orders API"]
+    end
 
-3
+    UI --> Auth
+    UI --> Tesseract
+    UI --> AgentEngine
+    AgentEngine --> VaultAgent
+    AgentEngine --> BankAgent
+    VaultAgent --> MCPTools
+    MCPTools --> Firestore
+    BankAgent -->|"A2A"| VaultAgent
+    BankAgent --> CreateOrder
+    CreateOrder --> OrderAPI
+    UI --> Checkout
+    Checkout --> VerifyPay
+    VerifyPay --> Firestore
+```
+
+---
+
+## Core Protocols
+
+ClearKYC implements four interconnected protocols that work together to enable autonomous, secure KYC verification:
 
-Real-World Cost of KYC
+### MCP — Model Context Protocol
+
+Provides **secure, tool-based access** to the user's KYC vault. Instead of giving banks direct database access, MCP exposes a controlled set of tools that agents can invoke.
+
+| Tool | Description |
+|---|---|
+| `read_document` | Read verified document data from user vault |
+| `verify_identity` | Cross-check identity fields across multiple documents |
+| `check_consent` | Verify user has granted consent for a specific bank |
+| `generate_proof` | Create SHA-256 cryptographic proof of data access |
+
+### ADK — Agent Development Kit
+
+Each agent follows an autonomous **reasoning loop**:
+
+```mermaid
+graph LR
+    P["Perceive"] --> T["Think"]
+    T --> A["Act"]
+    A --> R["Respond"]
+    R -.->|"next cycle"| P
+```
+
+- **VaultAgent** — owns user's KYC data, processes incoming bank requests, invokes MCP tools
+- **BankAgent** — represents a bank, creates KYC requests, evaluates responses, triggers payment
+
+### A2A — Agent-to-Agent Communication
+
+Structured message passing between agents with typed messages and unique IDs:
+
+```mermaid
+sequenceDiagram
+    participant Bank as BankAgent
+    participant Vault as VaultAgent
+    participant MCP as MCP Tools
+
+    Bank->>Vault: kyc_request (fields: PAN, Address, DOB)
+    Vault->>MCP: check_consent(bankName, fields)
+    MCP-->>Vault: consent granted
+    Vault->>MCP: verify_identity(fields)
+    MCP-->>Vault: all fields verified
+    Vault->>Bank: kyc_response (success, verified fields)
+    Bank->>Vault: payment_confirmation (paymentId, ₹1)
+    Vault->>MCP: generate_proof(bank, fields, paymentId)
+    MCP-->>Vault: SHA-256 proof hash
+    Vault->>Bank: access_proof (proofHash)
+```
+
+### AP2 — Automated Payment Protocol
+
+Handles the ₹1 payment from bank to user with cryptographic proof:
+
+1. BankAgent triggers Razorpay order creation via `/api/create-order`
+2. User completes payment through Razorpay Checkout (test mode)
+3. Payment signature verified server-side via `/api/verify-payment`
+4. VaultAgent generates SHA-256 proof: `hash(bankName | fields | paymentId | timestamp)`
+5. Proof logged to Firestore audit trail and sent to BankAgent via A2A
+
+---
+
+## Data Flow
+
+```mermaid
+flowchart LR
+    Upload["User uploads PAN/Aadhaar image"]
+    OCR["Tesseract.js extracts text in-browser"]
+    Parse["Regex parses PAN number, name, DOB"]
+    Store["Verified data saved to Firestore"]
+    Request["Bank clicks 'Request KYC'"]
+    Pipeline["Agent pipeline runs (A2A + MCP)"]
+    Pay["Razorpay test payment (₹1)"]
+    Proof["SHA-256 proof generated"]
+    Log["Access log + earnings updated"]
+
+    Upload --> OCR --> Parse --> Store
+    Request --> Pipeline --> Pay --> Proof --> Log
+```
+
+---
+
+## Firestore Data Model
+
+```
+users/
+  {uid}/
+    displayName, email, photoURL, kycCompletion, totalEarnings, createdAt
+    documents/
+      pan/     → { fields: {number, name, dob}, verified, verifiedAt }
+      aadhaar/ → { fields: {number, name, dob, gender, address}, verified, verifiedAt }
+      selfie/  → { fields: {livenessCheck}, verified, verifiedAt }
+    accessLogs/
+      {logId}/ → { bankName, purpose, fieldsShared, paymentId, amountEarned, timestamp }
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Frontend | HTML/CSS/JS (vanilla) | Single-page application |
+| Authentication | Firebase Auth | Google Sign-In |
+| Database | Cloud Firestore | User vaults, documents, access logs |
+| OCR | Tesseract.js | On-device document text extraction |
+| Agent System | Custom JS (agents.js) | MCP, ADK, A2A, AP2 protocols |
+| Payments | Razorpay (test mode) | ₹1 bank-to-user payments |
+| Backend APIs | Vercel Serverless | Order creation, payment verification |
+| Hosting | Vercel | Static + serverless deployment |
+
+---
+
+## Project Structure
+
+```
+ClearKYC/
+├── public/                     Frontend (served by Vercel)
+│   ├── index.html              Main SPA with all screens
+│   ├── css/
+│   │   └── styles.css          Complete stylesheet
+│   └── js/
+│       ├── firebase-config.js  Firebase initialization + exports
+│       ├── auth.js             Google Sign-In flow
+│       ├── vault.js            Document upload + Tesseract OCR + Firestore
+│       ├── agents.js           Agent system (MCP, ADK, A2A, AP2)
+│       ├── payment.js          Razorpay integration + access logs
+│       └── app.js              Main controller, routing, UI rendering
+├── api/                        Vercel serverless functions
+│   ├── create-order.js         Creates Razorpay test order
+│   ├── verify-payment.js       Verifies Razorpay payment signature
+│   └── verify-document.js      (Legacy — OCR now runs client-side)
+├── vercel.json                 Vercel routing config
+├── package.json                Dependencies
+├── SETUP.md                    Setup guide
+└── README.md                   This file
+```
+
+---
+
+## Security & Privacy
+
+| Feature | Implementation |
+|---|---|
+| Data ownership | All KYC data stored under user's own Firestore path |
+| No raw document storage | Images processed in-browser via Tesseract, only text saved |
+| Consent-based access | MCP `check_consent` tool verifies permission before sharing |
+| Cryptographic proof | SHA-256 hash of every access for audit trail |
+| Secret protection | Razorpay secret key stored in Vercel env vars, never exposed |
+| Auth security | Firebase Auth handles tokens, session management |
+| Firestore rules | Users can only read/write their own documents |
+
+---
+
+## Demo Script
+
+Follow these steps to demonstrate ClearKYC to your professor. The entire flow takes approximately 3–5 minutes.
+
+### Prerequisites
+
+- Open [https://clearkyc.vercel.app](https://clearkyc.vercel.app) in Chrome
+- Have a PAN card image and an Aadhaar card image ready on your device
+- Have any selfie photo ready
+- **Test card for payment:** `4111 1111 1111 1111`, expiry: any future date, CVV: any 3 digits
+
+### Step 1 — Sign In (30 seconds)
+
+1. Click **"Sign in with Google"**
+2. Select your Google account
+3. You land on the **Dashboard** — all three documents show "PENDING"
 
-Current Industry Reality:
+> **What to explain:** "The user signs in once. Their encrypted KYC vault is created automatically in Firebase."
+
+### Step 2 — Upload PAN Card (30–45 seconds)
+
+1. Click **"Complete Verification"** or go to **KYC Vault** tab
+2. Click the **PAN Card** upload area
+3. Select a PAN card image
+4. Watch the **AI Verification Process** screen:
+   - File format check (instant)
+   - **OCR extraction** with progress bar (Tesseract running in-browser)
+   - Details verification (regex validates PAN format `ABCDE1234F`)
+   - Fraud detection check
+   - Saved to vault
+
+> **What to explain:** "The image is processed entirely in the user's browser using Tesseract OCR. The raw image never leaves the device — only the extracted PAN number, name, and DOB are stored in the encrypted vault. This is a key privacy feature."
 
-• Banks spend ₹50 – ₹150 per customer for KYC
+### Step 3 — Upload Aadhaar + Selfie (1 minute)
 
-• (document verification, API checks, staff, compliance)
+1. Go to **Documents** in the vault sidebar
+2. Upload an Aadhaar card image — same verification flow
+3. Upload any selfie — liveness check runs
+4. Go back to **Dashboard** — all three should show **VERIFIED**, progress bar at 100%
 
-• Large banks do millions of KYCs per year
+> **What to explain:** "The user verifies once. This vault can now be reused by any bank, any number of times, without re-uploading documents."
 
-• Duplicate KYC across banks = huge wastage
+### Step 4 — Bank View + Agent Pipeline (1–2 minutes)
 
-Example Calculation
+This is the most impressive part of the demo.
 
-If a bank performs 10 lakh KYCs/year
+1. Go to **Bank View** tab
+2. Notice the **agent status dots** (VaultAgent, BankAgent, MCP Tools, AP2 Payment)
+3. See the **verified fields** the bank would receive (PAN, Address, DOB, Liveness)
+4. Click **"State Bank of India"** card
+5. Watch the status dots light up as the agent pipeline runs
+6. **Razorpay payment popup** appears — enter test card:
+   - Card: `4111 1111 1111 1111`
+   - Expiry: `12/30` (any future date)
+   - CVV: `123` (any 3 digits)
+7. Payment succeeds — toast shows "KYC approved via A2A!"
 
-Cost ≈ ₹5–15 crore annually
+> **What to explain:** "When SBI requests KYC, the BankAgent sends a request to the VaultAgent via A2A protocol. The VaultAgent checks consent, reads the vault using MCP tools, and responds with only the verified fields — never raw documents. The bank pays ₹1 via Razorpay, and a SHA-256 cryptographic proof is generated for the audit trail."
 
-127.0.0.1:5500/ClearKYC
+### Step 5 — Agent Log (30 seconds)
 
-Presentation.html 3/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
+1. Go to **Agent Log** tab
+2. Show the color-coded live log:
+   - **Yellow (ADK):** Agent reasoning steps — perceive, think, act, respond
+   - **Blue (A2A):** Messages between VaultAgent and BankAgent
+   - **Purple (MCP):** Tool calls — `check_consent`, `verify_identity`, `generate_proof`
+   - **Green (AP2):** Payment confirmation and SHA-256 proof hash
 
-4
+> **What to explain:** "This is the full audit trail. Every agent decision, every tool call, every message between agents is logged. A regulator can verify exactly what was shared, when, and with cryptographic proof."
 
-Insight & Opportunity
+### Step 6 — Access Log + Earnings (30 seconds)
 
-Observation:
+1. Go to **Access Log** tab
+2. Show the earnings card (₹1.00 earned)
+3. Show the log entry with bank name, purpose, fields shared, and timestamp
+4. Try clicking another bank (HDFC or ICICI) to show multiple entries accumulating
 
-Opportunity:
+> **What to explain:** "The user earns ₹1 for every KYC usage. All access is tracked in real-time. The user has full visibility and control over who accessed their data."
 
-• Same PAN, Aadhaar, address
+### Step 7 — How It Works (15 seconds)
 
-verified again & again
+1. Go to **How It Works** tab
+2. Show the flow diagram: User → Vault → AI Agent → Bank → Payment
+3. Point out the **4 core protocols** (MCP, ADK, A2A, AP2)
+4. Point out the **infrastructure** (Firebase, Tesseract, Razorpay, Vercel)
 
-• Data already exists — but no
+---
 
-reuse mechanism
+## Economic Model
 
-• Replace document-based KYC
+| Metric | Traditional KYC | ClearKYC |
+|---|---|---|
+| Cost per KYC | ₹50–150 | ₹1 |
+| Time to verify | 1–3 days | < 30 seconds |
+| Documents stored by bank | Full copies | None (verified fields only) |
+| User data control | None | Full consent-based control |
+| User earnings | ₹0 | ₹1 per access |
+| Repeat KYC needed | Yes, every bank | No, verify once |
 
-with consent-based verification
+For a bank doing 10 lakh KYCs/year: **₹5–15 crore** becomes **₹10 lakh** — a **95%+ cost reduction**.
 
-• Instead of paying ₹100+ per
+---
 
-KYC,
+## Future Scope
 
-• Bank pays ₹1 to user
+- **Loans & credit verification** — extend vault to include credit score, income proof
+- **Insurance onboarding** — same consent-based model for insurance KYC
+- **Employment verification** — employers verify candidate identity via agents
+- **Cross-bank portability** — verified KYC transfers between banks automatically
+- **Cross-country KYC** — international identity verification for NRIs
+- **Regulatory dashboard** — dedicated view for regulators to audit consent and proof chains
 
-• Uses autonomous AI
+---
 
-verification
+## Local Development
 
-• Saves >95% cost
+```bash
+# Clone the repo
+git clone https://github.com/malikdotexe/ClearKYC.git
+cd ClearKYC
 
-127.0.0.1:5500/ClearKYC
+# Install dependencies
+npm install
 
-Presentation.html 4/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
+# Create .env.local with your keys
+echo "RAZORPAY_KEY_ID=rzp_test_xxx" >> .env.local
+echo "RAZORPAY_KEY_SECRET=xxx" >> .env.local
 
-5
+# Run locally
+npx vercel dev
+```
 
-Proposed Solution
+---
 
-ClearKYC
+## Deployment
 
-What is ClearKYC?
+The app is deployed on Vercel and auto-deploys on every push to `main`.
 
-• A user-owned encrypted KYC vault
+```bash
+vercel --prod
+```
 
-• AI agents perform autonomous KYC
+**Live URL:** [https://clearkyc.vercel.app](https://clearkyc.vercel.app)
 
-• Banks request consent-based access
+---
 
-• User earns ₹1 per KYC usage
+## License
 
-Key Idea:
-
-Verify once → Reuse everywhere → With consent →
-
-With reward
-
-127.0.0.1:5500/ClearKYC
-
-Presentation.html 5/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
-
-6
-
-Technology & Implementation
-
-Technologies Used:
-
-MCP
-
-Secure, tool-based data access
-
-ADK
-
-Autonomous KYC agent logic
-
-A2A
-
-Vault Agent ↔ Bank Agent
-
-communication
-
-AP2
-
-Automated ₹1 payment with proof
-
-Cloud Infrastructure
-
-Scalable deployment
-
-Implementation:
-
-• User verifies once
-
-• Consent mandate created
-
-• Bank agent calls vault tools
-
-• Decision made automatically
-
-127.0.0.1:5500/ClearKYC
-
-Presentation.html 6/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
-
-7
-
-Security, Privacy & Compliance
-
-Privacy Protection Security Features
-
-✓
-
-✓
-
-✓
-
-Data remains inside user
-
-vault
-
-Only required fields are
-
-shared
-
-No raw document
-
-downloads
-
-✓
-
-✓
-
-✓
-
-Cryptographic consent &
-
-payment proof
-
-Full audit trail for
-
-regulators
-
-System is privacy-first,
-
-consent-driven
-
-Regulator-friendly architecture
-
-127.0.0.1:5500/ClearKYC
-
-Presentation.html 7/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
-
-8
-
-Economic Benefits
-
-For Banks For Users
-
-✓
-
-✓
-
-✓
-
-KYC cost: ₹100 → ₹1
-
-Faster onboarding
-
-Lower fraud risk
-
-✓
-
-✓
-
-One-time KYC
-
-Full control over data
-
-✓
-
-Earn from data access
-
-✓
-
-Scales to millions of users
-
-Net Result:
-
-Everyone benefits — users, banks, and regulators.
-
-127.0.0.1:5500/ClearKYC
-
-Presentation.html 8/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
-
-9
-
-Conclusion & Future Scope
-
-ClearKYC transforms KYC from a manual, expensive process
-
-into an autonomous, consent-based digital infrastructure.
-
-Future Scope:
-
-• Loans & credit verification
-
-• Insurance onboarding
-
-• Employment & education verification
-
-• Cross-bank & cross-country KYC
-
-Thank You
-
-127.0.0.1:5500/ClearKYC
-
-Presentation.html 9/10_1/8/26, 11:57 PM ClearKYC – Autonomous KYC using AI Agents
-
-127.0.0.1:5500/ClearKYC
-
-Presentation.html 10/10_
+Built for MIT-WPU Mini Project (2025–26). All rights reserved.
