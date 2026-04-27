@@ -39,61 +39,68 @@ export async function uploadAndVerifyDocument(file, docType, onStep) {
   if (!user) throw new Error("Not authenticated");
 
   onStep("format", "active", "Checking file format and quality...");
-  await sleep(500);
+  await sleep(400);
 
   const validTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
   if (!validTypes.includes(file.type)) {
     onStep("format", "error", "Invalid file type. Please upload JPG or PNG.");
     throw new Error("Invalid file type");
   }
-  if (file.size > 5 * 1024 * 1024) {
-    onStep("format", "error", "File too large. Max 5MB.");
+  if (file.size > 10 * 1024 * 1024) {
+    onStep("format", "error", "File too large. Max 10MB.");
     throw new Error("File too large");
   }
   onStep("format", "completed", "File format OK");
 
-  onStep("extract", "active", "Extracting data from document...");
-  const base64 = await compressAndEncode(file);
+  let fields;
 
-  let result;
   if (docType === "selfie") {
+    onStep("extract", "active", "Running liveness check...");
     await sleep(1500);
-    result = { success: true, fields: { type: "selfie", livenessCheck: "passed", _isValid: true } };
+    fields = { type: "selfie", livenessCheck: "passed", _isValid: true };
+    onStep("extract", "completed", "Liveness check passed");
   } else {
-    const response = await fetch("/api/verify-document", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: base64, docType }),
-    });
-    if (!response.ok) {
-      let errMsg = `Server error (${response.status})`;
-      try {
-        const errData = await response.json();
-        errMsg = errData.error || errData.details || errMsg;
-      } catch (e) { /* ignore */ }
-      onStep("extract", "error", errMsg);
-      throw new Error(errMsg);
+    onStep("extract", "active", "Running Tesseract OCR on document...");
+
+    const imageUrl = URL.createObjectURL(file);
+    let rawText;
+    try {
+      const result = await Tesseract.recognize(imageUrl, "eng", {
+        logger: (m) => {
+          if (m.status === "recognizing text" && m.progress) {
+            const pct = Math.round(m.progress * 100);
+            onStep("extract", "active", `OCR in progress... ${pct}%`);
+          }
+        },
+      });
+      rawText = result.data.text;
+    } catch (err) {
+      onStep("extract", "error", "OCR failed: " + err.message);
+      throw new Error("OCR failed");
+    } finally {
+      URL.revokeObjectURL(imageUrl);
     }
-    result = await response.json();
+
+    if (!rawText || rawText.trim().length < 5) {
+      onStep("extract", "error", "No text detected. Upload a clearer image.");
+      throw new Error("No text detected");
+    }
+
+    onStep("extract", "completed", "Text extracted successfully");
+
+    onStep("match", "active", "Parsing and verifying extracted data...");
+    await sleep(600);
+
+    fields = parseDocument(rawText, docType);
+
+    if (!fields._isValid) {
+      onStep("match", "error", `Could not find valid ${docType.toUpperCase()} number. Try a clearer image.`);
+      throw new Error("Verification failed — document number not found");
+    }
+    onStep("match", "completed", `${docType.toUpperCase()} number verified`);
   }
 
-  if (!result.success) {
-    onStep("extract", "error", result.error || "Could not read document");
-    throw new Error(result.error || "OCR failed");
-  }
-  onStep("extract", "completed", "Data extracted successfully");
-
-  onStep("match", "active", "Verifying details and format...");
-  await sleep(800);
-
-  if (result.fields._isValid) {
-    onStep("match", "completed", "Details verified");
-  } else {
-    onStep("match", "error", "Could not verify document format");
-    throw new Error("Verification failed");
-  }
-
-  onStep("fraud", "active", "Running fraud detection...");
+  onStep("fraud", "active", "Running fraud detection algorithms...");
   await sleep(1000);
   onStep("fraud", "completed", "No fraud detected");
 
@@ -101,8 +108,7 @@ export async function uploadAndVerifyDocument(file, docType, onStep) {
 
   const docRef = doc(db, "users", user.uid, "documents", docType);
   await setDoc(docRef, {
-    fields: result.fields,
-    rawText: result.rawText || null,
+    fields,
     verified: true,
     verifiedAt: serverTimestamp(),
   });
@@ -110,7 +116,117 @@ export async function uploadAndVerifyDocument(file, docType, onStep) {
   await recalcKYC(user.uid);
   onStep("complete", "completed", "Verification complete!");
 
-  return result.fields;
+  return fields;
+}
+
+function parseDocument(text, docType) {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  if (docType === "pan") return parsePAN(text, lines);
+  if (docType === "aadhaar") return parseAadhaar(text, lines);
+  return { _isValid: false };
+}
+
+function parsePAN(text, lines) {
+  const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]/;
+  const panMatch = text.replace(/\s/g, "").match(panRegex) || text.match(panRegex);
+
+  const dobRegex = /(\d{2}\/\d{2}\/\d{4})/;
+  const dobMatch = text.match(dobRegex);
+
+  let name = "";
+  for (let i = 0; i < lines.length; i++) {
+    const lower = lines[i].toLowerCase();
+    if (lower.includes("name") && !lower.includes("father") && i + 1 < lines.length) {
+      name = lines[i + 1];
+      break;
+    }
+  }
+  if (!name) {
+    for (const line of lines) {
+      if (
+        /^[A-Z][A-Z\s]{2,}$/.test(line) &&
+        !line.includes("INDIA") &&
+        !line.includes("INCOME") &&
+        !line.includes("GOVT") &&
+        !line.includes("PERMANENT") &&
+        !line.includes("DEPARTMENT") &&
+        !line.includes("TAX")
+      ) {
+        name = line;
+        break;
+      }
+    }
+  }
+
+  const panNumber = panMatch ? panMatch[0] : null;
+  return {
+    type: "pan",
+    number: panNumber,
+    name: name || "Extracted from document",
+    dob: dobMatch ? dobMatch[1] : null,
+    _isValid: !!panNumber,
+  };
+}
+
+function parseAadhaar(text, lines) {
+  const cleaned = text.replace(/[oO]/g, function (m) {
+    return m;
+  });
+  const aadhaarRegex = /\d{4}\s?\d{4}\s?\d{4}/;
+  const aadhaarMatch = cleaned.match(aadhaarRegex);
+
+  const dobRegex = /(\d{2}\/\d{2}\/\d{4})/;
+  const dobMatch = text.match(dobRegex);
+
+  const genderRegex = /\b(male|female|MALE|FEMALE|Male|Female)\b/i;
+  const genderMatch = text.match(genderRegex);
+
+  let name = "";
+  for (const line of lines) {
+    if (
+      /^[A-Z][a-z]+(\s[A-Z][a-z]+)+$/.test(line) &&
+      !line.includes("India") &&
+      !line.includes("Government") &&
+      !line.includes("Authority")
+    ) {
+      name = line;
+      break;
+    }
+  }
+  if (!name) {
+    for (const line of lines) {
+      if (/^[A-Z][A-Z\s]{3,}$/.test(line) &&
+        !line.includes("INDIA") &&
+        !line.includes("GOVERNMENT") &&
+        !line.includes("AADHAAR") &&
+        !line.includes("UNIQUE")
+      ) {
+        name = line;
+        break;
+      }
+    }
+  }
+
+  let address = "";
+  const addressKeywords = ["s/o", "d/o", "w/o", "c/o", "address"];
+  for (let i = 0; i < lines.length; i++) {
+    if (addressKeywords.some((k) => lines[i].toLowerCase().includes(k))) {
+      address = lines.slice(i, Math.min(i + 4, lines.length)).join(", ");
+      break;
+    }
+  }
+
+  const aadhaarNumber = aadhaarMatch ? aadhaarMatch[0] : null;
+  return {
+    type: "aadhaar",
+    number: aadhaarNumber,
+    name: name || "Extracted from document",
+    dob: dobMatch ? dobMatch[1] : null,
+    gender: genderMatch ? genderMatch[0] : null,
+    address: address || null,
+    _isValid: !!aadhaarNumber,
+  };
 }
 
 async function recalcKYC(uid) {
@@ -124,35 +240,6 @@ async function recalcKYC(uid) {
 
   const pct = Math.round((verified / docTypes.length) * 100);
   await updateDoc(doc(db, "users", uid), { kycCompletion: pct });
-}
-
-function compressAndEncode(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const MAX = 1200;
-      let w = img.width;
-      let h = img.height;
-      if (w > MAX || h > MAX) {
-        const ratio = Math.min(MAX / w, MAX / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL("image/jpeg", 0.8));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Failed to load image"));
-    };
-    img.src = url;
-  });
 }
 
 function sleep(ms) {

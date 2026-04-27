@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -195,10 +196,10 @@
                                         Raw images are never permanently stored. Banks only see verification results.
                                     </p>
                                     <div class="text-xs text-gray-500">
-                                        • Documents processed via Google Cloud Vision AI<br>
+                                        • Documents processed by on-device OCR (Tesseract)<br>
                                         • Only extracted text is saved in your vault<br>
-                                        • Full audit trail maintained<br>
-                                        • You control all access
+                                        • Raw images never leave your browser<br>
+                                        • Full audit trail maintained
                                     </div>
                                 </div>
                             </div>
@@ -238,7 +239,7 @@
 
                             <div class="security-note mt-6">
                                 <span>🔒</span>
-                                <span>Your document image is sent securely to Google Cloud Vision for text extraction, then immediately discarded. Only the extracted and verified data is stored in your encrypted vault.</span>
+                                <span>Your document image is processed entirely in your browser using Tesseract OCR — it never leaves your device. Only the extracted text data is stored in your encrypted vault.</span>
                             </div>
                         </div>
                     </div>
@@ -410,7 +411,7 @@
                             <div class="text-2xl mb-2">🤖</div>
                             <div class="font-semibold">AI Agent</div>
                         </div>
-                        <div class="flow-label">Cloud Vision OCR</div>
+                        <div class="flow-label">Tesseract OCR</div>
                     </div>
                     <div class="flow-arrow">→</div>
                     <div class="flow-step">
@@ -466,8 +467,8 @@
                         </div>
                         <div class="stat-card">
                             <div class="text-2xl mb-2">👁️</div>
-                            <div class="font-semibold text-sm">Cloud Vision AI</div>
-                            <div class="text-xs text-gray-500">Document OCR</div>
+                            <div class="font-semibold text-sm">Tesseract OCR</div>
+                            <div class="text-xs text-gray-500">On-device document OCR</div>
                         </div>
                         <div class="stat-card">
                             <div class="text-2xl mb-2">💳</div>
