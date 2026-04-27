@@ -1,3 +1,11 @@
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "10mb",
+    },
+  },
+};
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -6,42 +14,66 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { image, docType } = req.body;
-  if (!image || !docType) {
-    return res.status(400).json({ error: "Missing image or docType" });
-  }
-
-  const apiKey = process.env.GOOGLE_VISION_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "Vision API key not configured" });
-  }
-
   try {
+    const { image, docType } = req.body || {};
+    if (!image || !docType) {
+      return res.status(400).json({ error: "Missing image or docType", receivedKeys: Object.keys(req.body || {}) });
+    }
+
+    const apiKey = process.env.GOOGLE_VISION_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "Vision API key not configured" });
+    }
+
     const base64Data = image.includes(",") ? image.split(",")[1] : image;
+
+    const visionPayload = {
+      requests: [
+        {
+          image: { content: base64Data },
+          features: [{ type: "TEXT_DETECTION", maxResults: 1 }],
+        },
+      ],
+    };
 
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: { content: base64Data },
-              features: [{ type: "TEXT_DETECTION", maxResults: 1 }],
-            },
-          ],
-        }),
+        body: JSON.stringify(visionPayload),
       }
     );
 
-    const visionData = await visionResponse.json();
-
-    if (visionData.error) {
-      return res.status(500).json({ error: "Vision API error", details: visionData.error });
+    const visionText = await visionResponse.text();
+    let visionData;
+    try {
+      visionData = JSON.parse(visionText);
+    } catch (e) {
+      return res.status(500).json({
+        error: "Vision API returned non-JSON",
+        status: visionResponse.status,
+        body: visionText.slice(0, 500),
+      });
     }
 
-    const annotations = visionData.responses?.[0]?.textAnnotations;
+    if (visionData.error) {
+      return res.status(500).json({
+        error: "Vision API error",
+        details: visionData.error.message || visionData.error,
+        code: visionData.error.code,
+      });
+    }
+
+    const responseItem = visionData.responses?.[0];
+    if (responseItem?.error) {
+      return res.status(500).json({
+        error: "Vision API response error",
+        details: responseItem.error.message || responseItem.error,
+      });
+    }
+
+    const annotations = responseItem?.textAnnotations;
     if (!annotations || annotations.length === 0) {
       return res.status(200).json({
         success: false,
@@ -60,7 +92,7 @@ export default async function handler(req, res) {
       verified: fields._isValid,
     });
   } catch (err) {
-    return res.status(500).json({ error: "Server error", details: err.message });
+    return res.status(500).json({ error: "Server error", details: err.message, stack: err.stack?.split("\n").slice(0, 3) });
   }
 }
 

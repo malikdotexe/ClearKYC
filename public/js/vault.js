@@ -53,7 +53,7 @@ export async function uploadAndVerifyDocument(file, docType, onStep) {
   onStep("format", "completed", "File format OK");
 
   onStep("extract", "active", "Extracting data from document...");
-  const base64 = await fileToBase64(file);
+  const base64 = await compressAndEncode(file);
 
   let result;
   if (docType === "selfie") {
@@ -65,6 +65,15 @@ export async function uploadAndVerifyDocument(file, docType, onStep) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: base64, docType }),
     });
+    if (!response.ok) {
+      let errMsg = `Server error (${response.status})`;
+      try {
+        const errData = await response.json();
+        errMsg = errData.error || errData.details || errMsg;
+      } catch (e) { /* ignore */ }
+      onStep("extract", "error", errMsg);
+      throw new Error(errMsg);
+    }
     result = await response.json();
   }
 
@@ -117,12 +126,32 @@ async function recalcKYC(uid) {
   await updateDoc(doc(db, "users", uid), { kycCompletion: pct });
 }
 
-function fileToBase64(file) {
+function compressAndEncode(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1200;
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX || h > MAX) {
+        const ratio = Math.min(MAX / w, MAX / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = url;
   });
 }
 
