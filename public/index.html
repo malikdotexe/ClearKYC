@@ -60,6 +60,7 @@
             <button class="nav-link" data-screen="vault">KYC Vault</button>
             <button class="nav-link" data-screen="consent">Access Log</button>
             <button class="nav-link" data-screen="bank">Bank View</button>
+            <button class="nav-link" data-screen="agents">Agent Log</button>
             <button class="nav-link" data-screen="flow">How It Works</button>
         </div>
         <div class="nav-right">
@@ -289,7 +290,26 @@
             <div class="card">
                 <div class="card-header">
                     <h1 class="card-title">Bank KYC Agent View</h1>
-                    <p class="card-description">Simulates how a bank requests and pays for your verified KYC data</p>
+                    <p class="card-description">When you click a bank below, the full agent pipeline runs: BankAgent (A2A) → VaultAgent (MCP tools) → Payment (AP2) — all visible in the Agent Log tab</p>
+                </div>
+
+                <div class="agent-status-bar" id="agent-status-bar">
+                    <div class="agent-status-item">
+                        <div class="agent-dot" id="dot-vault"></div>
+                        <span>VaultAgent</span>
+                    </div>
+                    <div class="agent-status-item">
+                        <div class="agent-dot" id="dot-bank"></div>
+                        <span>BankAgent</span>
+                    </div>
+                    <div class="agent-status-item">
+                        <div class="agent-dot" id="dot-mcp"></div>
+                        <span>MCP Tools</span>
+                    </div>
+                    <div class="agent-status-item">
+                        <div class="agent-dot" id="dot-ap2"></div>
+                        <span>AP2 Payment</span>
+                    </div>
                 </div>
 
                 <div class="mb-6">
@@ -304,11 +324,11 @@
 
                 <div class="security-note mb-6">
                     <span>⚠️</span>
-                    <span><strong>No Raw Documents:</strong> Banks never see your actual PAN card, Aadhaar, or photos. Only verification results are shared — the core privacy promise of ClearKYC.</span>
+                    <span><strong>No Raw Documents:</strong> Banks never see your actual PAN card, Aadhaar, or photos. Only verification results are shared via A2A protocol — the core privacy promise of ClearKYC.</span>
                 </div>
 
                 <div class="card mb-6">
-                    <h3 class="font-semibold mb-4">Select Bank for Demo</h3>
+                    <h3 class="font-semibold mb-4">Select Bank to Trigger Agent Pipeline</h3>
                     <div class="grid grid-3">
                         <div class="bank-request-card" onclick="handleBankPayment('State Bank of India', 'Account Opening')">
                             <div class="bank-icon">🏦</div>
@@ -332,7 +352,30 @@
                     <button id="bank-pay-btn" class="btn btn-accent" disabled onclick="handleBankPayment('Demo Bank', 'KYC Verification')">
                         Approve KYC — Pay ₹1
                     </button>
-                    <p class="text-xs text-gray-500 mt-2">Uses Razorpay Test Mode — no real money is charged. Test card: 4111 1111 1111 1111</p>
+                    <p class="text-xs text-gray-500 mt-2">Uses Razorpay Test Mode (AP2) — no real money is charged. Test card: 4111 1111 1111 1111</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== AGENT LOG ===== -->
+        <div id="agents" class="screen">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">Agent Communication Log</h1>
+                    <p class="card-description">Live view of A2A messages, MCP tool calls, ADK reasoning steps, and AP2 payment proofs</p>
+                </div>
+
+                <div class="protocol-legend">
+                    <div class="protocol-legend-item"><div class="protocol-legend-dot dot-adk"></div>ADK — Agent reasoning</div>
+                    <div class="protocol-legend-item"><div class="protocol-legend-dot dot-a2a"></div>A2A — Agent-to-Agent messages</div>
+                    <div class="protocol-legend-item"><div class="protocol-legend-dot dot-mcp"></div>MCP — Tool calls on vault</div>
+                    <div class="protocol-legend-item"><div class="protocol-legend-dot dot-ap2"></div>AP2 — Payment with proof</div>
+                </div>
+
+                <div id="agent-log" class="agent-log-container">
+                    <div class="agent-log-empty">
+                        No agent activity yet. Go to <strong>Bank View</strong> and click a bank to trigger the agent pipeline.
+                    </div>
                 </div>
             </div>
         </div>
@@ -388,7 +431,33 @@
                 </div>
 
                 <div class="mt-6">
-                    <h3 class="font-semibold mb-4 text-center">Technology Stack</h3>
+                    <h3 class="font-semibold mb-4 text-center">Core Protocols</h3>
+                    <div class="grid grid-4">
+                        <div class="stat-card">
+                            <div class="text-2xl mb-2" style="color:#7C3AED">MCP</div>
+                            <div class="font-semibold text-sm">Model Context Protocol</div>
+                            <div class="text-xs text-gray-500">Secure, tool-based data access to user vault</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="text-2xl mb-2" style="color:#F59E0B">ADK</div>
+                            <div class="font-semibold text-sm">Agent Development Kit</div>
+                            <div class="text-xs text-gray-500">Autonomous KYC agent logic (perceive→think→act)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="text-2xl mb-2" style="color:#0EA5E9">A2A</div>
+                            <div class="font-semibold text-sm">Agent-to-Agent</div>
+                            <div class="text-xs text-gray-500">VaultAgent ↔ BankAgent communication</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="text-2xl mb-2" style="color:#10B981">AP2</div>
+                            <div class="font-semibold text-sm">Automated Payment</div>
+                            <div class="text-xs text-gray-500">₹1 payment with cryptographic proof</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="font-semibold mb-4 text-center">Infrastructure</h3>
                     <div class="grid grid-4">
                         <div class="stat-card">
                             <div class="text-2xl mb-2">🔥</div>

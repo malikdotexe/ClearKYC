@@ -1,6 +1,7 @@
 import { initAuth, signInWithGoogle, signOut, getCurrentUser } from "./auth.js";
 import { listenToDocuments, listenToUserProfile, uploadAndVerifyDocument } from "./vault.js";
 import { initiatePayment, listenToAccessLogs } from "./payment.js";
+import { runAgentPipeline, confirmPipeline, onAgentLogUpdate, getAgentLog } from "./agents.js";
 
 let currentScreen = "dashboard";
 let currentVaultSection = "documents";
@@ -79,6 +80,10 @@ function startListeners() {
 
   unsubLogs = listenToAccessLogs((logs) => {
     renderAccessLogs(logs);
+  });
+
+  onAgentLogUpdate((entries) => {
+    renderAgentLog(entries);
   });
 }
 
@@ -326,12 +331,7 @@ function updateBankView() {
 }
 
 window.handleBankPayment = async function (bankName, purpose) {
-  const fieldsShared = [];
-  if (docStates.pan?.verified) fieldsShared.push("PAN");
-  if (docStates.aadhaar?.verified) fieldsShared.push("Address", "DOB");
-  if (docStates.selfie?.verified) fieldsShared.push("Selfie");
-
-  if (fieldsShared.length === 0) {
+  if (!docStates.pan?.verified && !docStates.aadhaar?.verified && !docStates.selfie?.verified) {
     showToast("No verified KYC data to share. Upload documents first.", "error");
     return;
   }
@@ -339,23 +339,113 @@ window.handleBankPayment = async function (bankName, purpose) {
   const btn = document.getElementById("bank-pay-btn");
   if (btn) {
     btn.disabled = true;
-    btn.textContent = "Processing...";
+    btn.textContent = "Running agent pipeline...";
   }
 
+  setAgentDots(["dot-vault", "dot-bank"], true);
+
   try {
-    const result = await initiatePayment(bankName, purpose, fieldsShared);
-    showToast(`KYC approved! ₹${result.amountEarned} earned from ${result.bankName}`, "success");
+    const user = getCurrentUser();
+    const pipelineResult = await runAgentPipeline(
+      user.uid,
+      docStates,
+      bankName,
+      purpose
+    );
+
+    if (!pipelineResult.success) {
+      showToast("Agent pipeline failed: " + pipelineResult.error, "error");
+      return;
+    }
+
+    setAgentDots(["dot-mcp"], true);
+    setAgentDots(["dot-ap2"], true);
+
+    const paymentResult = await initiatePayment(bankName, purpose, pipelineResult.fieldsShared);
+
+    await confirmPipeline(
+      pipelineResult.vaultAgent,
+      pipelineResult.bankAgent,
+      paymentResult.paymentId,
+      bankName,
+      pipelineResult.fieldsShared
+    );
+
+    showToast(`KYC approved via A2A! ₹${paymentResult.amountEarned} earned from ${bankName}`, "success");
   } catch (err) {
     if (err.message !== "Payment cancelled") {
-      showToast("Payment failed: " + err.message, "error");
+      showToast("Pipeline error: " + err.message, "error");
     }
   } finally {
     if (btn) {
       btn.disabled = false;
       btn.textContent = "Approve KYC — Pay ₹1";
     }
+    setTimeout(() => setAgentDots(["dot-vault", "dot-bank", "dot-mcp", "dot-ap2"], false), 3000);
   }
 };
+
+function setAgentDots(ids, active) {
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("active", active);
+  });
+}
+
+/* ---- Agent Log Renderer ---- */
+
+function renderAgentLog(entries) {
+  const container = document.getElementById("agent-log");
+  if (!container) return;
+
+  if (entries.length === 0) {
+    container.innerHTML = `<div class="agent-log-empty">No agent activity yet. Go to <strong>Bank View</strong> and click a bank to trigger the agent pipeline.</div>`;
+    return;
+  }
+
+  container.innerHTML = entries.map((e) => {
+    const badge = e.protocol || "SYSTEM";
+    const badgeClass = `log-badge-${badge.toLowerCase()}`;
+    let content = "";
+    let detail = "";
+
+    if (e.type === "adk") {
+      const phaseLabel = { perceive: "PERCEIVE", think: "THINK", act: "ACT", respond: "RESPOND" }[e.phase] || e.phase;
+      content = `<strong>[${e.agent}]</strong> <em>${phaseLabel}</em>: ${e.description}`;
+      if (e.details) detail = JSON.stringify(e.details);
+    } else if (e.type === "a2a") {
+      content = `<strong>${e.from} → ${e.to}</strong>: ${e.messageType}`;
+      if (e.payload) detail = JSON.stringify(e.payload);
+    } else if (e.type === "mcp") {
+      if (e.action === "tool_call") {
+        content = `<strong>Tool Call:</strong> ${e.tool}(${JSON.stringify(e.input)})`;
+      } else if (e.action === "tool_result") {
+        content = `<strong>Tool Result:</strong> ${e.tool} → ${e.output?.success ? "success" : "failed"}`;
+        if (e.output?.results) detail = JSON.stringify(e.output.results);
+        if (e.output?.proofHash) detail = `Proof: ${e.output.proofHash.slice(0, 24)}...`;
+      } else {
+        content = `${e.action}: ${e.tool}`;
+      }
+    } else if (e.type === "ap2") {
+      content = e.description;
+      if (e.paymentId) detail = `Payment ID: ${e.paymentId}`;
+      if (e.proofHash) detail = `Proof: ${e.proofHash}`;
+    } else {
+      content = e.description || JSON.stringify(e);
+      if (e.proofHash) detail = `Proof: ${e.proofHash}`;
+    }
+
+    return `<div class="agent-log-entry">
+      <span class="log-badge ${badgeClass}">${badge}</span>
+      <div>
+        <div class="log-content">${content}</div>
+        ${detail ? `<div class="log-detail">${detail}</div>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+
+  container.scrollTop = container.scrollHeight;
+}
 
 /* ---- Access Logs ---- */
 

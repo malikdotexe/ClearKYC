@@ -812,6 +812,148 @@ body {
 .mt-6 { margin-top: 1.5rem; }
 .hidden { display: none !important; }
 
+/* ---------- Agent Log ---------- */
+.agent-log-container {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid #E5E7EB;
+  border-radius: 0.5rem;
+  background: #0A2540;
+  padding: 1rem;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.agent-log-entry {
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.25rem;
+  animation: logSlideIn 0.3s ease;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+@keyframes logSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.agent-log-entry .log-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  min-width: 3rem;
+  text-align: center;
+}
+
+.agent-log-entry .log-content {
+  color: #CBD5E1;
+  flex: 1;
+  word-break: break-word;
+}
+
+.agent-log-entry .log-content strong {
+  color: #F1F5F9;
+}
+
+.agent-log-entry .log-detail {
+  color: #64748B;
+  font-size: 0.7rem;
+  margin-top: 0.125rem;
+}
+
+.log-badge-mcp {
+  background: #7C3AED;
+  color: white;
+}
+
+.log-badge-a2a {
+  background: #0EA5E9;
+  color: white;
+}
+
+.log-badge-adk {
+  background: #F59E0B;
+  color: #0A2540;
+}
+
+.log-badge-ap2 {
+  background: #10B981;
+  color: white;
+}
+
+.log-badge-system {
+  background: #475569;
+  color: white;
+}
+
+.agent-log-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #64748B;
+}
+
+.protocol-legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.protocol-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: #6B7280;
+}
+
+.protocol-legend-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+}
+
+.protocol-legend-dot.dot-mcp { background: #7C3AED; }
+.protocol-legend-dot.dot-a2a { background: #0EA5E9; }
+.protocol-legend-dot.dot-adk { background: #F59E0B; }
+.protocol-legend-dot.dot-ap2 { background: #10B981; }
+
+.agent-status-bar {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem;
+  background: #F8FAFC;
+  border: 1px solid #E5E7EB;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.agent-status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.agent-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #D1D5DB;
+}
+
+.agent-dot.active {
+  background: #10B981;
+  box-shadow: 0 0 6px #10B981;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
   .nav {
