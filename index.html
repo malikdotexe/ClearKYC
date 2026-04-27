@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearKYC - Consent-Based KYC Vault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #F8FAFC;
+            color: #1F2933;
+            line-height: 1.6;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navigation */
+        .nav {
+            background: white;
+            border-bottom: 1px solid #E5E7EB;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0A2540;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: #6B7280;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            color: #0A2540;
+            background-color: #F3F4F6;
+        }
+
+        .nav-link.active {
+            color: #0A2540;
+            background-color: #F3F4F6;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Screen Container */
+        .screen {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+            border: 1px solid #E5E7EB;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0A2540;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-description {
+            color: #6B7280;
+            font-size: 0.875rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: #0A2540;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #1a365d;
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: #0A2540;
+            border: 1px solid #D1D5DB;
+        }
+
+        .btn-secondary:hover {
+            background-color: #F9FAFB;
+        }
+
+        .btn-accent {
+            background-color: #00B3A4;
+            color: white;
+        }
+
+        .btn-accent:hover {
+            background-color: #059669;
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-verified {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+
+        .badge-pending {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+
+        .badge-not-verified {
+            background-color: #FEE2E2;
+            color: #991B1B;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin: 1rem 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 0.5rem;
+            background-color: #E5E7EB;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #00B3A4;
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #D1D5DB;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00B3A4;
+            box-shadow: 0 0 0 3px rgba(0, 187, 164, 0.1);
+        }
+
+        /* File Upload */
+        .file-upload {
+            border: 2px dashed #D1D5DB;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+            background-color: #F9FAFB;
+        }
+
+        .file-upload:hover {
+            border-color: #00B3A4;
+            background-color: #F0FDF9;
+        }
+
+        .file-upload.dragover {
+            border-color: #00B3A4;
+            background-color: #F0FDF9;
+        }
+
+        .file-upload-icon {
+            font-size: 2rem;
+            color: #6B7280;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-upload-text {
+            color: #6B7280;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-upload-subtext {
+            font-size: 0.75rem;
+            color: #9CA3AF;
+        }
+
+        /* Checklist */
+        .checklist {
+            margin: 1rem 0;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            opacity: 0.6;
+            transition: all 0.3s;
+        }
+
+        .checklist-item.completed {
+            opacity: 1;
+        }
+
+        .checklist-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 50%;
+            border: 2px solid #D1D5DB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: white;
+            background-color: #D1D5DB;
+            transition: all 0.3s;
+        }
+
+        .checklist-item.completed .checklist-icon {
+            background-color: #00B3A4;
+            border-color: #00B3A4;
+        }
+
+        .checklist-text {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        /* Grid Layouts */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        /* Vault Layout */
+        .vault-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+        }
+
+        .vault-sidebar {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #E5E7EB;
+            padding: 1.5rem;
+        }
+
+        .vault-nav-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: #6B7280;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            margin-bottom: 0.25rem;
+            transition: all 0.2s;
+        }
+
+        .vault-nav-item:hover {
+            background-color: #F3F4F6;
+            color: #0A2540;
+        }
+
+        .vault-nav-item.active {
+            background-color: #F0FDF9;
+            color: #0A2540;
+            font-weight: 500;
+        }
+
+        .vault-content {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        /* Flow Diagram */
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            padding: 3rem 0;
+            overflow-x: auto;
+        }
+
+        .flow-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .flow-box {
+            background: white;
+            border: 2px solid #E5E7EB;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+        }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: #6B7280;
+        }
+
+        .flow-label {
+            font-size: 0.875rem;
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        /* Toggle */
+        .toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .toggle input[type="checkbox"] {
+            width: 2.5rem;
+            height: 1.25rem;
+            background-color: #D1D5DB;
+            border-radius: 9999px;
+            position: relative;
+            appearance: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .toggle input[type="checkbox"]:checked {
+            background-color: #00B3A4;
+        }
+
+        .toggle input[type="checkbox"]:before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 0.875rem;
+            height: 0.875rem;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .toggle input[type="checkbox"]:checked:before {
+            transform: translateX(1.25rem);
+        }
+
+        .toggle-label {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .text-sm { font-size: 0.875rem; }
+        .text-lg { font-size: 1.125rem; }
+        .text-xl { font-size: 1.25rem; }
+        .text-2xl { font-size: 1.5rem; }
+        .font-semibold { font-weight: 600; }
+        .font-bold { font-weight: 700; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mt-6 { margin-top: 1.5rem; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-links {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .vault-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .flow-diagram {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Navigation -->
+        <nav class="nav">
+            <div class="nav-brand">ClearKYC</div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active" data-screen="dashboard">Dashboard</a>
+                <a href="#" class="nav-link" data-screen="vault">KYC Vault</a>
+                <a href="#" class="nav-link" data-screen="consent">Access Log</a>
+                <a href="#" class="nav-link" data-screen="bank">Bank View</a>
+                <a href="#" class="nav-link" data-screen="flow">How It Works</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Screen -->
+            <div id="dashboard" class="screen active">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="card-title">Your ClearKYC Vault</h1>
+                        <p class="card-description">Manage your KYC documents and verification status</p>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="text-sm font-semibold mb-2">KYC Strength: 80%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 80%"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="text-lg font-semibold mb-2">PAN Card</h3>
+                                <span class="badge badge-verified">Verified</span>
+                            </div>
+                            <p class="text-sm text-gray-600">Last verified: 2 days ago</p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="text-lg font-semibold mb-2">Address Proof</h3>
+                                <span class="badge badge-verified">Verified</span>
+                            </div>
+                            <p class="text-sm text-gray-600">Last verified: 2 days ago</p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="text-lg font-semibold mb-2">Selfie Verification</h3>
+                                <span class="badge badge-pending">Pending</span>
+                            </div>
+                            <p class="text-sm text-gray-600">Upload required for complete verification</p>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-6">
+                        <button class="btn btn-primary" onclick="showScreen('vault')">Complete Verification</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KYC Vault Screen -->
+            <div id="vault" class="screen">
+                <div class="vault-layout">
+                    <!-- Sidebar -->
+                    <div class="vault-sidebar">
+                        <nav>
+                            <a href="#" class="vault-nav-item active" data-vault-section="documents">Documents</a>
+                            <a href="#" class="vault-nav-item" data-vault-section="verification">Verification</a>
+                            <a href="#" class="vault-nav-item" data-vault-section="consent">Consent</a>
+                            <a href="#" class="vault-nav-item" data-vault-section="activity">Activity</a>
+                        </nav>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="vault-content">
+                        <!-- Documents Section -->
+                        <div id="documents-section" class="vault-section active">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2 class="card-title">Upload KYC Documents</h2>
+                                    <p class="card-description">Your documents are encrypted and never shared with banks</p>
+                                </div>
+
+                                <div class="grid grid-2">
+                                    <!-- PAN Upload -->
+                                    <div class="card">
+                                        <h3 class="text-lg font-semibold mb-4">PAN Card</h3>
+                                        <div id="pan-upload" class="file-upload">
+                                            <div class="file-upload-icon">📄</div>
+                                            <div class="file-upload-text">Drop PAN card image here or click to browse</div>
+                                            <div class="file-upload-subtext">PNG, JPG up to 5MB</div>
+                                            <input type="file" id="pan-file" accept="image/*" style="display: none;">
+                                        </div>
+                                        <div id="pan-status" class="mt-4" style="display: none;">
+                                            <div class="badge badge-verified mb-2">Verified ✅</div>
+                                            <p class="text-sm text-gray-600">PAN: AAAAA1234A</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Address Proof Upload -->
+                                    <div class="card">
+                                        <h3 class="text-lg font-semibold mb-4">Address Proof</h3>
+                                        <div id="address-upload" class="file-upload">
+                                            <div class="file-upload-icon">🏠</div>
+                                            <div class="file-upload-text">Drop address proof here or click to browse</div>
+                                            <div class="file-upload-subtext">Aadhaar, Utility Bill, PNG, JPG up to 5MB</div>
+                                            <input type="file" id="address-file" accept="image/*" style="display: none;">
+                                        </div>
+                                        <div id="address-status" class="mt-4" style="display: none;">
+                                            <div class="badge badge-verified mb-2">Verified ✅</div>
+                                            <p class="text-sm text-gray-600">Address verified for Mumbai, Maharashtra</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Selfie Upload -->
+                                    <div class="card">
+                                        <h3 class="text-lg font-semibold mb-4">Selfie Verification</h3>
+                                        <div id="selfie-upload" class="file-upload">
+                                            <div class="file-upload-icon">📷</div>
+                                            <div class="file-upload-text">Take a selfie for liveness check</div>
+                                            <div class="file-upload-subtext">JPG, PNG up to 5MB</div>
+                                            <input type="file" id="selfie-file" accept="image/*" style="display: none;">
+                                        </div>
+                                        <div id="selfie-status" class="mt-4" style="display: none;">
+                                            <div class="badge badge-verified mb-2">Verified ✅</div>
+                                            <p class="text-sm text-gray-600">Liveness check passed</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Security Note -->
+                                    <div class="card">
+                                        <h3 class="text-lg font-semibold mb-4">🔒 Security First</h3>
+                                        <p class="text-sm text-gray-600 mb-4">
+                                            This data stays in your encrypted vault. Banks never download documents.
+                                            They only receive verification confirmations through AI agents.
+                                        </p>
+                                        <div class="text-sm text-gray-500">
+                                            • Documents are encrypted end-to-end<br>
+                                            • Only verified attributes are shared<br>
+                                            • Full audit trail maintained<br>
+                                            • You control all access
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Verification Section -->
+                        <div id="verification-section" class="vault-section">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2 class="card-title">AI Verification Process</h2>
+                                    <p class="card-description">Watch how our AI agents verify your documents</p>
+                                </div>
+
+                                <div id="verification-steps" class="checklist">
+                                    <div class="checklist-item" data-step="format">
+                                        <div class="checklist-icon">1</div>
+                                        <div class="checklist-text">Checking file format and quality...</div>
+                                    </div>
+                                    <div class="checklist-item" data-step="extract">
+                                        <div class="checklist-icon">2</div>
+                                        <div class="checklist-text">Extracting data from document...</div>
+                                    </div>
+                                    <div class="checklist-item" data-step="match">
+                                        <div class="checklist-icon">3</div>
+                                        <div class="checklist-text">Verifying name and details match...</div>
+                                    </div>
+                                    <div class="checklist-item" data-step="fraud">
+                                        <div class="checklist-icon">4</div>
+                                        <div class="checklist-text">Running fraud detection algorithms...</div>
+                                    </div>
+                                    <div class="checklist-item" data-step="complete">
+                                        <div class="checklist-icon">✓</div>
+                                        <div class="checklist-text">Verification complete!</div>
+                                    </div>
+                                </div>
+
+                                <div class="text-center mt-6">
+                                    <button class="btn btn-primary" onclick="runVerification()">Start Verification</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Consent Section -->
+                        <div id="consent-section" class="vault-section">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2 class="card-title">Consent Settings</h2>
+                                    <p class="card-description">Control how banks access your verified KYC data</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="toggle">
+                                        <input type="checkbox" id="auto-consent" checked>
+                                        <span class="toggle-label">Allow future KYC access automatically</span>
+                                    </label>
+                                </div>
+
+                                <p class="text-sm text-gray-600 mt-4">
+                                    When enabled, banks can request access to your verified KYC data.
+                                    You earn ₹1 for each successful verification.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Activity Section -->
+                        <div id="activity-section" class="vault-section">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2 class="card-title">Recent Activity</h2>
+                                    <p class="card-description">See how your KYC data is being used</p>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between p-4 border rounded-lg">
+                                        <div>
+                                            <div class="font-semibold">Bank of India</div>
+                                            <div class="text-sm text-gray-600">Account Opening - ₹1 earned</div>
+                                        </div>
+                                        <div class="text-sm text-gray-500">2 hours ago</div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between p-4 border rounded-lg">
+                                        <div>
+                                            <div class="font-semibold">HDFC Bank</div>
+                                            <div class="text-sm text-gray-600">Credit Card Application - ₹1 earned</div>
+                                        </div>
+                                        <div class="text-sm text-gray-500">1 day ago</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consent & Access Screen -->
+            <div id="consent" class="screen">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="card-title">Who Accessed Your KYC?</h1>
+                        <p class="card-description">Track all KYC verification requests and earnings</p>
+                    </div>
+
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="text-lg font-semibold">Bank of India</h3>
+                                <p class="text-sm text-gray-600 mb-2">Account Opening</p>
+                                <div class="badge badge-verified">₹1 earned</div>
+                            </div>
+                            <p class="text-sm text-gray-500">Requested: PAN, Address, DOB</p>
+                            <p class="text-sm text-gray-500">Approved: 2 hours ago</p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="text-lg font-semibold">HDFC Bank</h3>
+                                <p class="text-sm text-gray-600 mb-2">Credit Card Application</p>
+                                <div class="badge badge-verified">₹1 earned</div>
+                            </div>
+                            <p class="text-sm text-gray-500">Requested: PAN, Address, Income</p>
+                            <p class="text-sm text-gray-500">Approved: 1 day ago</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h3 class="font-semibold mb-2">💰 Earnings Summary</h3>
+                        <p class="text-lg font-bold text-green-600">₹2.00 earned this month</p>
+                        <p class="text-sm text-gray-600">You earn ₹1 every time your verified KYC is used by banks</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank View Screen -->
+            <div id="bank" class="screen">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="card-title">Bank KYC Agent View</h1>
+                        <p class="card-description">How banks see and use your verified KYC data</p>
+                    </div>
+
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold mb-4">Requested KYC Attributes</h3>
+                        <div class="grid grid-3">
+                            <div class="p-4 border rounded-lg text-center">
+                                <div class="text-2xl mb-2">✅</div>
+                                <div class="font-semibold">PAN Verified</div>
+                                <div class="text-sm text-gray-600">AAAAA1234A</div>
+                            </div>
+                            <div class="p-4 border rounded-lg text-center">
+                                <div class="text-2xl mb-2">✅</div>
+                                <div class="font-semibold">Address Verified</div>
+                                <div class="text-sm text-gray-600">Mumbai, Maharashtra</div>
+                            </div>
+                            <div class="p-4 border rounded-lg text-center">
+                                <div class="text-2xl mb-2">✅</div>
+                                <div class="font-semibold">DOB Verified</div>
+                                <div class="text-sm text-gray-600">1990-01-01</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                        <div class="flex items-center">
+                            <div class="text-red-600 mr-2">⚠️</div>
+                            <div>
+                                <div class="font-semibold text-red-800">No Raw Documents</div>
+                                <div class="text-sm text-red-700">Banks never see your actual PAN card, Aadhaar, or photos. Only verification results are shared.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <button class="btn btn-accent" onclick="approveKYC()">Approve KYC - Pay ₹1</button>
+                        <p class="text-sm text-gray-600 mt-2">KYC completed without human review</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Flow Screen -->
+            <div id="flow" class="screen">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="card-title">How ClearKYC Works</h1>
+                        <p class="card-description">A simple flow showing consent-based KYC verification</p>
+                    </div>
+
+                    <div class="flow-diagram">
+                        <div class="flow-step">
+                            <div class="flow-box">
+                                <div class="text-2xl mb-2">👤</div>
+                                <div class="font-semibold">User</div>
+                            </div>
+                            <div class="flow-label">Uploads KYC once</div>
+                        </div>
+
+                        <div class="flow-arrow">→</div>
+
+                        <div class="flow-step">
+                            <div class="flow-box">
+                                <div class="text-2xl mb-2">🔒</div>
+                                <div class="font-semibold">ClearKYC Vault</div>
+                            </div>
+                            <div class="flow-label">Encrypted storage</div>
+                        </div>
+
+                        <div class="flow-arrow">→</div>
+
+                        <div class="flow-step">
+                            <div class="flow-box">
+                                <div class="text-2xl mb-2">🤖</div>
+                                <div class="font-semibold">AI Agent</div>
+                            </div>
+                            <div class="flow-label">Autonomous verification</div>
+                        </div>
+
+                        <div class="flow-arrow">→</div>
+
+                        <div class="flow-step">
+                            <div class="flow-box">
+                                <div class="text-2xl mb-2">🏦</div>
+                                <div class="font-semibold">Bank</div>
+                            </div>
+                            <div class="flow-label">Gets verification result</div>
+                        </div>
+
+                        <div class="flow-arrow">→</div>
+
+                        <div class="flow-step">
+                            <div class="flow-box">
+                                <div class="text-2xl mb-2">💰</div>
+                                <div class="font-semibold">₹1 Payment</div>
+                            </div>
+                            <div class="flow-label">User earns reward</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 text-center">
+                        <p class="text-lg font-semibold text-gray-800 mb-4">Key Benefits</p>
+                        <div class="grid grid-3">
+                            <div class="text-center">
+                                <div class="text-2xl mb-2">🔒</div>
+                                <div class="font-semibold">Privacy First</div>
+                                <div class="text-sm text-gray-600">Your documents stay private</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl mb-2">⚡</div>
+                                <div class="font-semibold">Instant Verification</div>
+                                <div class="text-sm text-gray-600">No manual review needed</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl mb-2">💰</div>
+                                <div class="font-semibold">Earn Money</div>
+                                <div class="text-sm text-gray-600">₹1 per KYC usage</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // State management
+        let currentScreen = 'dashboard';
+        let currentVaultSection = 'documents';
+        let kycStatus = {
+            pan: false,
+            address: false,
+            selfie: false
+        };
+
+        // Navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const screen = e.target.dataset.screen;
+                showScreen(screen);
+            });
+        });
+
+        // Vault navigation
+        document.querySelectorAll('.vault-nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = e.target.dataset.vaultSection;
+                showVaultSection(section);
+            });
+        });
+
+        function showScreen(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // Show selected screen
+            document.getElementById(screenId).classList.add('active');
+
+            // Update navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[data-screen="${screenId}"]`).classList.add('active');
+
+            currentScreen = screenId;
+        }
+
+        function showVaultSection(sectionId) {
+            // Hide all vault sections
+            document.querySelectorAll('.vault-section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Show selected section
+            document.getElementById(`${sectionId}-section`).classList.add('active');
+
+            // Update navigation
+            document.querySelectorAll('.vault-nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-vault-section="${sectionId}"]`).classList.add('active');
+
+            currentVaultSection = sectionId;
+        }
+
+        // File upload functionality
+        function setupFileUploads() {
+            const uploads = [
+                { id: 'pan-upload', fileId: 'pan-file', statusId: 'pan-status', type: 'pan' },
+                { id: 'address-upload', fileId: 'address-file', statusId: 'address-status', type: 'address' },
+                { id: 'selfie-upload', fileId: 'selfie-file', statusId: 'selfie-status', type: 'selfie' }
+            ];
+
+            uploads.forEach(upload => {
+                const uploadArea = document.getElementById(upload.id);
+                const fileInput = document.getElementById(upload.fileId);
+                const statusDiv = document.getElementById(upload.statusId);
+
+                // Click to upload
+                uploadArea.addEventListener('click', () => {
+                    fileInput.click();
+                });
+
+                // File selection
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        handleFileUpload(upload.type, file);
+                    }
+                });
+
+                // Drag and drop
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('dragover');
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    const file = e.dataTransfer.files[0];
+                    if (file) {
+                        handleFileUpload(upload.type, file);
+                    }
+                });
+            });
+        }
+
+        function handleFileUpload(type, file) {
+            // Simulate file processing
+            const statusDiv = document.getElementById(`${type}-status`);
+            const uploadDiv = document.getElementById(`${type}-upload`);
+
+            // Hide upload area, show status
+            uploadDiv.style.display = 'none';
+            statusDiv.style.display = 'block';
+
+            // Update KYC status
+            kycStatus[type] = true;
+            updateProgressBar();
+
+            // Simulate verification process
+            setTimeout(() => {
+                runVerification();
+            }, 1000);
+        }
+
+        function updateProgressBar() {
+            const verifiedCount = Object.values(kycStatus).filter(status => status).length;
+            const percentage = (verifiedCount / 3) * 100;
+
+            const progressFill = document.querySelector('.progress-fill');
+            const progressText = document.querySelector('.progress-container .font-semibold');
+
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `KYC Strength: ${percentage}%`;
+        }
+
+        // Verification process
+        function runVerification() {
+            const steps = ['format', 'extract', 'match', 'fraud', 'complete'];
+            let currentStep = 0;
+
+            const interval = setInterval(() => {
+                if (currentStep < steps.length) {
+                    const stepElement = document.querySelector(`[data-step="${steps[currentStep]}"]`);
+                    stepElement.classList.add('completed');
+                    currentStep++;
+                } else {
+                    clearInterval(interval);
+                    // Update badges on dashboard
+                    updateDashboardBadges();
+                }
+            }, 800);
+        }
+
+        function updateDashboardBadges() {
+            // Update dashboard badges based on verification status
+            const badges = document.querySelectorAll('.badge');
+            badges.forEach(badge => {
+                if (badge.textContent.includes('Pending')) {
+                    badge.className = 'badge badge-verified';
+                    badge.textContent = 'Verified';
+                }
+            });
+        }
+
+        // Bank approval
+        function approveKYC() {
+            alert('KYC Approved! ₹1 has been transferred to the user.');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFileUploads();
+            updateProgressBar();
+        });
+    </script>
+</body>
+</html>

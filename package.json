@@ -1,0 +1,12 @@
+{
+  "name": "clearkyc",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "razorpay": "^2.9.4",
+    "crypto": "^1.0.1"
+  }
+}
