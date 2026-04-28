@@ -55,6 +55,7 @@ function handleLogin(user) {
 }
 
 function handleLogout() {
+  stopCamera();
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("app-screen").classList.add("hidden");
   if (unsubDocs) unsubDocs();
@@ -99,6 +100,10 @@ function setupNavigation() {
 }
 
 function showScreen(screenId) {
+  if (currentScreen === "vault" && screenId !== "vault") {
+    stopCamera();
+  }
+
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
   const el = document.getElementById(screenId);
   if (el) el.classList.add("active");
@@ -217,13 +222,12 @@ function fieldRow(label, value) {
 }
 
 function setupFileUploads() {
-  const configs = [
+  const docConfigs = [
     { docType: "pan", uploadId: "pan-upload", fileId: "pan-file" },
     { docType: "aadhaar", uploadId: "aadhaar-upload", fileId: "aadhaar-file" },
-    { docType: "selfie", uploadId: "selfie-upload", fileId: "selfie-file" },
   ];
 
-  configs.forEach(({ docType, uploadId, fileId }) => {
+  docConfigs.forEach(({ docType, uploadId, fileId }) => {
     const area = document.getElementById(uploadId);
     const input = document.getElementById(fileId);
     if (!area || !input) return;
@@ -245,6 +249,81 @@ function setupFileUploads() {
       if (e.dataTransfer.files[0]) handleUpload(docType, e.dataTransfer.files[0]);
     });
   });
+
+  setupSelfieCamera();
+}
+
+let selfieStream = null;
+
+function setupSelfieCamera() {
+  const placeholder = document.getElementById("selfie-placeholder");
+  const video = document.getElementById("selfie-video");
+  const canvas = document.getElementById("selfie-canvas");
+  const controls = document.getElementById("selfie-controls");
+  const captureBtn = document.getElementById("selfie-capture-btn");
+  const retakeBtn = document.getElementById("selfie-retake-btn");
+
+  if (!placeholder || !video) return;
+
+  placeholder.addEventListener("click", startCamera);
+
+  async function startCamera() {
+    try {
+      selfieStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      video.srcObject = selfieStream;
+      video.classList.remove("hidden");
+      placeholder.classList.add("hidden");
+      controls.classList.remove("hidden");
+      captureBtn.classList.remove("hidden");
+      retakeBtn.classList.add("hidden");
+    } catch (err) {
+      showToast("Camera access denied. Please allow camera permission.", "error");
+    }
+  }
+
+  captureBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    stopCamera();
+
+    const img = document.createElement("img");
+    img.src = canvas.toDataURL("image/jpeg", 0.85);
+    img.className = "selfie-preview";
+    video.classList.add("hidden");
+    video.insertAdjacentElement("afterend", img);
+
+    captureBtn.classList.add("hidden");
+    retakeBtn.classList.remove("hidden");
+
+    canvas.toBlob((blob) => {
+      const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+      handleUpload("selfie", file);
+    }, "image/jpeg", 0.85);
+  });
+
+  retakeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const preview = document.querySelector(".selfie-preview");
+    if (preview) preview.remove();
+    startCamera();
+  });
+}
+
+function stopCamera() {
+  if (selfieStream) {
+    selfieStream.getTracks().forEach((t) => t.stop());
+    selfieStream = null;
+  }
 }
 
 async function handleUpload(docType, file) {

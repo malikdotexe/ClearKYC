@@ -180,11 +180,18 @@
 
                                 <div class="card">
                                     <h3 class="font-semibold mb-4">📷 Selfie Verification</h3>
-                                    <div id="selfie-upload" class="file-upload">
-                                        <div class="file-upload-icon">🤳</div>
-                                        <div class="file-upload-text">Take a selfie for liveness check</div>
-                                        <div class="file-upload-subtext">PNG, JPG up to 5MB</div>
-                                        <input type="file" id="selfie-file" accept="image/*" style="display:none">
+                                    <div id="selfie-upload" class="selfie-camera-area">
+                                        <video id="selfie-video" class="selfie-video" autoplay playsinline muted></video>
+                                        <canvas id="selfie-canvas" class="hidden"></canvas>
+                                        <div id="selfie-placeholder" class="selfie-placeholder">
+                                            <div class="file-upload-icon">🤳</div>
+                                            <div class="file-upload-text">Click to open camera</div>
+                                            <div class="file-upload-subtext">Take a live selfie for liveness check</div>
+                                        </div>
+                                        <div id="selfie-controls" class="selfie-controls hidden">
+                                            <button id="selfie-capture-btn" class="btn btn-accent selfie-btn">Capture Selfie</button>
+                                            <button id="selfie-retake-btn" class="btn btn-secondary selfie-btn hidden">Retake</button>
+                                        </div>
                                     </div>
                                     <div id="selfie-status" class="hidden"></div>
                                 </div>
