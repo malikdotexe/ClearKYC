@@ -464,15 +464,6 @@ window.handleBankPayment = async function (bankName, purpose) {
   }
 };
 
-window.copyDemoValue = async function (value) {
-  try {
-    await navigator.clipboard.writeText(value);
-    showToast(`Copied: ${value}`, "success");
-  } catch (err) {
-    showToast("Could not copy automatically. Please copy manually.", "error");
-  }
-};
-
 function setAgentDots(ids, active) {
   ids.forEach((id) => {
     const el = document.getElementById(id);

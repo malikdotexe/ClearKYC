@@ -33,6 +33,16 @@ export async function initiatePayment(bankName, purpose, fieldsShared) {
       name: "ClearKYC",
       description: `KYC Payment: ${bankName}`,
       order_id: data.orderId,
+      config: {
+        display: {
+          hide: [
+            {
+              method: "upi",
+              flows: ["collect"],
+            },
+          ],
+        },
+      },
       handler: async function (response) {
         try {
           const verifyRes = await fetch("/api/verify-payment", {
