@@ -356,11 +356,33 @@
                     </div>
                 </div>
 
+                <div class="card mb-6">
+                    <h3 class="font-semibold mb-2">Demo Payment Helper (Razorpay Test Mode)</h3>
+                    <p class="text-sm text-gray-600 mb-4">Recommended for smooth demo: choose UPI in Razorpay and use these test VPAs.</p>
+                    <div class="grid grid-2">
+                        <div class="doc-status">
+                            <div class="extracted-field">
+                                <span class="field-label">Success UPI ID</span>
+                                <span class="field-value">success@razorpay</span>
+                            </div>
+                            <button class="btn btn-secondary mt-2" onclick="copyDemoValue('success@razorpay')">Copy Success UPI</button>
+                        </div>
+                        <div class="doc-status">
+                            <div class="extracted-field">
+                                <span class="field-label">Failure UPI ID</span>
+                                <span class="field-value">failure@razorpay</span>
+                            </div>
+                            <button class="btn btn-secondary mt-2" onclick="copyDemoValue('failure@razorpay')">Copy Failure UPI</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-4">Card test flow can be inconsistent in some test setups. UPI test IDs are the most reliable for live demos.</p>
+                </div>
+
                 <div class="text-center">
                     <button id="bank-pay-btn" class="btn btn-accent" disabled onclick="handleBankPayment('Demo Bank', 'KYC Verification')">
                         Approve KYC — Pay ₹1
                     </button>
-                    <p class="text-xs text-gray-500 mt-2">Uses Razorpay Test Mode (AP2) — no real money is charged. Test card: 4111 1111 1111 1111</p>
+                    <p class="text-xs text-gray-500 mt-2">Uses Razorpay Test Mode (AP2) — no real money is charged.</p>
                 </div>
             </div>
         </div>
