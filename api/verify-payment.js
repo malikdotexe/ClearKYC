@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing payment details" });
   }
 
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
   if (!keySecret) {
     return res.status(500).json({ error: "Razorpay secret not configured" });
   }
